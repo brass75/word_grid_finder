@@ -98,7 +98,8 @@ class WordGridTui(App):
 
     BINDINGS = [
         ("ctrl+r", "refresh", "Refresh the word list."),
-        ("ctrl+q", "quit", "Exit the Word Grid finder"),
+        ("ctrl+q", "quit", "Exit the Word Grid finder."),
+        ("ctrl+c", "copy", "Copy the selected text."),
     ]
 
     def __init__(self, args: WGFArgs, wordlist: list[str]):
@@ -128,6 +129,9 @@ class WordGridTui(App):
 
     def on_mount(self):
         self.title = "Find words for the Word Grid game!"
+
+    def action_copy(self):
+        self.copy_to_clipboard(self.text_box.selected_text)
 
 
 @dataclass
