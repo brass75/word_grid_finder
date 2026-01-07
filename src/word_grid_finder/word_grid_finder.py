@@ -41,9 +41,9 @@ class Options(VerticalScroll):
                 id="inp-does-not-contain", value=" ".join(self._args.not_contain or [])
             ),
             Label("Minimum word length"),
-            Input(id="inp-min-len", type="integer", value=self._args.minlen or ""),
+            Input(id="inp-min-len", type="integer", value=str(self._args.minlen) if self._args.minlen else ""),
             Label("Maximum word length"),
-            Input(id="inp-max-len", type="integer", value=self._args.maxlen or ""),
+            Input(id="inp-max-len", type="integer", value=str(self._args.maxlen) if self._args.maxlen else ""),
             Button("Update word list", id="btn-submit"),
         )
 
@@ -78,8 +78,8 @@ class Options(VerticalScroll):
             tests.append(Double())
         if not_contains := self.query_one("#inp-does-not-contain").value:
             tests.extend(Contains(c, does_not=True) for c in not_contains.split(" "))
-        min_len = self.query_one("#inp-min-len").value
-        max_len = self.query_one("#inp-max-len").value
+        min_len = self.query_one("#inp-min-len").value or 0
+        max_len = self.query_one("#inp-max-len").value or 0
         if min_len or max_len:
             tests.append(Length(int(min_len) or 1, int(max_len) or 1_000_000))
         self._tests = tests
@@ -316,7 +316,6 @@ def run_tui(args: WGFArgs, wordlist: list[str]):
 
 
 def start_tui():
-    print("Starting the TUI!")
     WordGridTui(parse_args(WGFArgs), SOWPODS.read_text().splitlines()).run()
 
 
