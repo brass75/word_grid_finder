@@ -20,14 +20,16 @@ def join_with_and(strings: list[str]) -> str:
     if len(strings) == 1:
         return strings[0]
     if len(strings) == 2:
-        return ' and '.join(strings)
-    s = ', '.join(strings[:-1])
-    s += f', and {strings[-1]}'
+        return " and ".join(strings)
+    s = ", ".join(strings[:-1])
+    s += f", and {strings[-1]}"
     return s
 
 
 class Options(VerticalScroll):
-    def __init__(self, text_box, args: WGFArgs, wordlist: list[str], app: App, id_: str = None):
+    def __init__(
+        self, text_box, args: WGFArgs, wordlist: list[str], app: App, id_: str = None
+    ):
         super().__init__(id=id_)
         self.text_box = text_box
         self._args = args
@@ -35,7 +37,7 @@ class Options(VerticalScroll):
         self._tests = list()
         width, _ = shutil.get_terminal_size((120, 40))
         self._width = math.floor(width * 0.7) - 2
-        self._test_string = ''
+        self._test_string = ""
         self._app = app
 
     @property
@@ -58,9 +60,17 @@ class Options(VerticalScroll):
                 id="inp-does-not-contain", value=" ".join(self._args.not_contain or [])
             ),
             Label("Minimum word length"),
-            Input(id="inp-min-len", type="integer", value=str(self._args.minlen) if self._args.minlen else ""),
+            Input(
+                id="inp-min-len",
+                type="integer",
+                value=str(self._args.minlen) if self._args.minlen else "",
+            ),
             Label("Maximum word length"),
-            Input(id="inp-max-len", type="integer", value=str(self._args.maxlen) if self._args.maxlen else ""),
+            Input(
+                id="inp-max-len",
+                type="integer",
+                value=str(self._args.maxlen) if self._args.maxlen else "",
+            ),
             Button("Update word list", id="btn-submit"),
         )
 
@@ -71,7 +81,7 @@ class Options(VerticalScroll):
     def refresh_words(self) -> None:
         self.get_tests()
         self.update_valid_words()
-        self._app.title = f'Word Grid Finder: {self.test_string}'
+        self._app.title = f"Word Grid Finder: {self.test_string}"
 
     def on_show(self):
         self.refresh_words()
@@ -87,32 +97,38 @@ class Options(VerticalScroll):
         test_string_components = []
         if contains := self.query_one("#inp-contains").value:
             tests.extend(map(Contains, contains.split(" ")))
-            test_string_components.append(f'Contains {join_with_and(contains.split(" "))}')
+            test_string_components.append(
+                f"Contains {join_with_and(contains.split(' '))}"
+            )
         if starts := self.query_one("#inp-starts-with").value:
             tests.append(Contains(starts, starts=True))
-            test_string_components.append(f'Starts with {starts}')
+            test_string_components.append(f"Starts with {starts}")
         if ends := self.query_one("#inp-ends-with").value:
             tests.append(Contains(ends, ends=True))
-            test_string_components.append(f'Ends with {ends}')
+            test_string_components.append(f"Ends with {ends}")
         if multiple := self.query_one("#inp-contains-multiple").value:
             tests.append(Contains(multiple, multiple=True))
-            test_string_components.append(f'Contains multiple {multiple}')
+            test_string_components.append(f"Contains multiple {multiple}")
         if self.query_one("#ck-double").value:
             tests.append(Double())
-            test_string_components.append('Contains double letters')
+            test_string_components.append("Contains double letters")
         if not_contains := self.query_one("#inp-does-not-contain").value:
             tests.extend(Contains(c, does_not=True) for c in not_contains.split(" "))
-            test_string_components.append(f'Does not contain {join_with_and((not_contains.split(" ")))}')
+            test_string_components.append(
+                f"Does not contain {join_with_and((not_contains.split(' ')))}"
+            )
         min_len = self.query_one("#inp-min-len").value or 0
         max_len = self.query_one("#inp-max-len").value or 0
         if min_len or max_len:
             tests.append(Length(int(min_len) or 1, int(max_len) or 1_000_000))
             if min_len and max_len:
-                test_string_components.append(f'Is between {min_len} and {max_len} letters long')
+                test_string_components.append(
+                    f"Is between {min_len} and {max_len} letters long"
+                )
             elif min_len:
-                test_string_components.append(f'Is at least {min_len} letters long')
+                test_string_components.append(f"Is at least {min_len} letters long")
             else:
-                test_string_components.append(f'Is at most {max_len} letters long')
+                test_string_components.append(f"Is at most {max_len} letters long")
         self._test_string = join_with_and(test_string_components)
         self._tests = tests
 
