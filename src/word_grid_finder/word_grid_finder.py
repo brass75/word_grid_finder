@@ -36,7 +36,7 @@ class Options(VerticalScroll):
         self._wordlist = wordlist
         self._tests = list()
         width, _ = shutil.get_terminal_size((120, 40))
-        self._width = math.floor(width * 0.7) - 2
+        self._width = math.floor(width * 0.65) - 2
         self._test_string = ""
         self._app = app
 
@@ -285,6 +285,8 @@ class Length(Test):
     max_len: int
 
     def check(self, word: str) -> bool:
+        if self.min_len == self.max_len:
+            return len(word) == self.min_len
         return self.min_len <= len(word) <= self.max_len
 
 
