@@ -71,6 +71,12 @@ class Options(VerticalScroll):
                 type="integer",
                 value=str(self._args.maxlen) if self._args.maxlen else "",
             ),
+            Label("Word length"),
+            Input(
+                id="inp-word-len",
+                type="integer",
+                value=str(self._args.length) if self._args.length else "",
+            ),
             Button("Update word list", id="btn-submit"),
         )
 
@@ -117,9 +123,13 @@ class Options(VerticalScroll):
             test_string_components.append(
                 f"Does not contain {join_with_and((not_contains.split(' ')))}"
             )
+        length = self.query_one("#inp-word-len").value or 0
         min_len = self.query_one("#inp-min-len").value or 0
         max_len = self.query_one("#inp-max-len").value or 0
-        if min_len or max_len:
+        if length:
+            tests.append(Length(int(length), int(length)))
+            test_string_components.append(f"Is {length} letters long")
+        elif min_len or max_len:
             tests.append(Length(int(min_len) or 1, int(max_len) or 1_000_000))
             if min_len and max_len:
                 test_string_components.append(
@@ -153,6 +163,8 @@ class WordGridTui(App):
 
     def __init__(self, args: WGFArgs, wordlist: list[str]):
         super().__init__()
+        if args.length and (args.minlen or args.maxlen):
+            raise ValueError("You cannot set both length and max/min")
         self.text_box = TextArea(id="txt-valid-words", read_only=True, soft_wrap=False)
         self.options = Options(
             self.text_box,
@@ -206,6 +218,11 @@ class WGFArgs:
         int,
         "Maximum length of the word",
         Flags("-m", "--max"),
+    ] = 0
+    length: Annotated[
+        int,
+        "Length of the word",
+        Flags("-l", "--length"),
     ] = 0
     contains: Annotated[
         list[str],
@@ -300,10 +317,12 @@ class Double(Test):
         return bool(re.search(r"([a-z])\1", word))
 
 
-def handle_args() -> tuple[list[Test], Path, bool]:
+def handle_args() -> tuple[list[Test], Path, bool, CLIArgs]:
     """Handle the argument parsing"""
     args = parse_args(CLIArgs)
     tests: list[Test] = list()
+    if args.length and (args.minlen or args.maxlen):
+        raise ValueError("You cannot set both length and max/min")
     if start := args.startswith:
         tests.append(Contains(start, starts=True))
     if end := args.endswith:
@@ -320,7 +339,7 @@ def handle_args() -> tuple[list[Test], Path, bool]:
         tests.extend(
             Contains(substring, does_not=True) for substring in args.not_contain
         )
-    return tests, args.word_list, args.reversed
+    return tests, args.word_list, args.reversed, args
 
 
 def format_output(wordlist: list[str], line_len: int = 120, separator: str = "\n"):
@@ -338,18 +357,21 @@ def format_output(wordlist: list[str], line_len: int = 120, separator: str = "\n
     return output + curr_line
 
 
-def main():
+def main() -> int:
     """Main function"""
-    tests, wordlist, reverse_output = handle_args()
+    tests, wordlist, reverse_output, args = handle_args()
     if not (word_list := wordlist.read_text().splitlines()):
         raise RuntimeError(f"Failed to read word list from {wordlist=}")
     if not tests:
         raise RuntimeError("You didn't specify any constraints!")
+    if args.tui:
+        return run_tui(args, word_list)
     valid_words = get_valid_words(reverse_output, tests, word_list)
     width, _ = shutil.get_terminal_size(
         (120, 40)
     )  # Get the right width for the screen to maaximize output
     print(format_output(valid_words, line_len=width))
+    return 0
 
 
 def get_valid_words(
@@ -362,12 +384,13 @@ def get_valid_words(
     )
 
 
-def run_tui(args: WGFArgs, wordlist: list[str]):
+def run_tui(args: WGFArgs, wordlist: list[str]) -> int:
     WordGridTui(args, wordlist).run()
+    return 0
 
 
-def start_tui():
-    WordGridTui(parse_args(WGFArgs), SOWPODS.read_text().splitlines()).run()
+def start_tui() -> int:
+    return run_tui(parse_args(WGFArgs), SOWPODS.read_text().splitlines()).run()
 
 
 if __name__ == "__main__":
