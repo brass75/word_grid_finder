@@ -1,4 +1,5 @@
 import math
+import re
 import shutil
 
 from abc import abstractmethod
@@ -13,6 +14,74 @@ from typing import Annotated
 
 
 SOWPODS = Path(Path(__file__).parent, "data/sowpods.txt")
+
+
+@dataclass
+class WGFArgs:
+    """Arguments for Word Grid Finder"""
+
+    startswith: Annotated[
+        str,
+        "Words must start with this substring",
+        Flags("-s", "--start"),
+    ] = field(default_factory=list)
+    endswith: Annotated[
+        str,
+        "Words must end with this substring",
+        Flags("-e", "--end"),
+    ] = ""
+    minlen: Annotated[
+        int,
+        "Minimum length of the word",
+        Flags("--min"),
+    ] = 0
+    maxlen: Annotated[
+        int,
+        "Maximum length of the word",
+        Flags("-m", "--max"),
+    ] = 0
+    length: Annotated[
+        int,
+        "Length of the word",
+        Flags("-l", "--length"),
+    ] = 0
+    contains: Annotated[
+        list[str],
+        "Substrings that the word must contain",
+        NArgs(value="*"),
+        Flags("-c", "--contains"),
+    ] = field(default_factory=list)
+    multiple: Annotated[
+        str,
+        "Word must comtain multiple instances of the letter",
+        Flags("-cm", "--multiple"),
+    ] = ""
+    double: Annotated[
+        StoreTrue,
+        "Word must contain the letter as a double letter.",
+        Flags("-d", "--double"),
+    ] = False
+    not_contain: Annotated[
+        str,
+        "Substrings that the word must not contain",
+        NArgs(value="*"),
+        Flags("-dc", "--does-not-contain"),
+    ] = field(default_factory=list)
+    word_list: Annotated[Path, "Path to the word list", Flags("--wordlist")] = SOWPODS
+
+
+@dataclass
+class CLIArgs(WGFArgs):
+    reversed: Annotated[
+        StoreTrue,
+        "Sort from long to short",
+        Flags("-r", "--reverse"),
+    ] = False
+    tui: Annotated[
+        StoreTrue,
+        "Use the TUI interface",
+        Flags("-t", "--tui"),
+    ] = False
 
 
 def join_with_and(strings: list[str]) -> str:
@@ -101,27 +170,35 @@ class Options(VerticalScroll):
         """Convert the options into Tests"""
         tests = []
         test_string_components = []
-        if contains := self.query_one("#inp-contains").value:
-            tests.extend(map(Contains, contains.split(" ")))
-            test_string_components.append(
-                f"Contains {join_with_and(contains.split(' '))}"
-            )
-        if starts := self.query_one("#inp-starts-with").value:
+        if (contains := self.query_one("#inp-contains").value) and (
+            contains := contains.strip()
+        ):
+            contains = re.split("\s+", contains)
+            tests.extend(Contains(s) for s in contains)
+            test_string_components.append(f"Contains {join_with_and(contains)}")
+        if (starts := self.query_one("#inp-starts-with").value) and (
+            starts := starts.strip()
+        ):
             tests.append(Contains(starts, starts=True))
             test_string_components.append(f"Starts with {starts}")
-        if ends := self.query_one("#inp-ends-with").value:
+        if (ends := self.query_one("#inp-ends-with").value) and (ends := ends.strip()):
             tests.append(Contains(ends, ends=True))
             test_string_components.append(f"Ends with {ends}")
-        if multiple := self.query_one("#inp-contains-multiple").value:
+        if (multiple := self.query_one("#inp-contains-multiple").value) and (
+            multiple := multiple.strip()
+        ):
             tests.append(Contains(multiple, multiple=True))
             test_string_components.append(f"Contains multiple {multiple}")
         if self.query_one("#ck-double").value:
             tests.append(Double())
             test_string_components.append("Contains double letters")
-        if not_contains := self.query_one("#inp-does-not-contain").value:
-            tests.extend(Contains(c, does_not=True) for c in not_contains.split(" "))
+        if (not_contains := self.query_one("#inp-does-not-contain").value) and (
+            not_contains := not_contains.strip()
+        ):
+            not_contains = re.split("\s+", not_contains)
+            tests.extend(Contains(c, does_not=True) for c in not_contains)
             test_string_components.append(
-                f"Does not contain {join_with_and((not_contains.split(' ')))}"
+                f"Does not contain {join_with_and(not_contains)}"
             )
         length = self.query_one("#inp-word-len").value or 0
         min_len = self.query_one("#inp-min-len").value or 0
@@ -195,74 +272,6 @@ class WordGridTui(App):
         self.copy_to_clipboard(self.text_box.selected_text)
 
 
-@dataclass
-class WGFArgs:
-    """Arguments for Word Grid Finder"""
-
-    startswith: Annotated[
-        str,
-        "Words must start with this substring",
-        Flags("-s", "--start"),
-    ] = field(default_factory=list)
-    endswith: Annotated[
-        str,
-        "Words must end with this substring",
-        Flags("-e", "--end"),
-    ] = ""
-    minlen: Annotated[
-        int,
-        "Minimum length of the word",
-        Flags("--min"),
-    ] = 0
-    maxlen: Annotated[
-        int,
-        "Maximum length of the word",
-        Flags("-m", "--max"),
-    ] = 0
-    length: Annotated[
-        int,
-        "Length of the word",
-        Flags("-l", "--length"),
-    ] = 0
-    contains: Annotated[
-        list[str],
-        "Substrings that the word must contain",
-        NArgs(value="*"),
-        Flags("-c", "--contains"),
-    ] = field(default_factory=list)
-    multiple: Annotated[
-        str,
-        "Word must comtain multiple instances of the letter",
-        Flags("-cm", "--multiple"),
-    ] = ""
-    double: Annotated[
-        StoreTrue,
-        "Word must contain the letter as a double letter.",
-        Flags("-d", "--double"),
-    ] = False
-    not_contain: Annotated[
-        str,
-        "Substrings that the word must not contain",
-        NArgs(value="*"),
-        Flags("-dc", "--does-not-contain"),
-    ] = field(default_factory=list)
-    word_list: Annotated[Path, "Path to the word list", Flags("--wordlist")] = SOWPODS
-
-
-@dataclass
-class CLIArgs(WGFArgs):
-    reversed: Annotated[
-        StoreTrue,
-        "Sort from long to short",
-        Flags("-r", "--reverse"),
-    ] = False
-    tui: Annotated[
-        StoreTrue,
-        "Use the TUI interface",
-        Flags("-t", "--tui"),
-    ] = False
-
-
 class Test:
     """Base class for checks"""
 
@@ -282,6 +291,9 @@ class Contains(Test):
     multiple: bool = False  # If the substring needs to appear multiple times
     does_not: bool = False  # If the word cannot include the substring
 
+    def __post_init__(self):
+        self.substring = self.substring.strip()
+
     def check(self, word: str) -> bool:
         if self.starts:
             return word.startswith(self.substring)
@@ -291,7 +303,7 @@ class Contains(Test):
             return word.count(self.substring) > 1
         if self.does_not:
             return self.substring not in word
-        return self.substring in word
+        return self.substring.strip() in word
 
 
 @dataclass
